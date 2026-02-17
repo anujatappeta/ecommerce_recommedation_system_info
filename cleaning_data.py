@@ -3,13 +3,17 @@ import pandas as pd
 def load_data(file_path):
     return pd.read_csv(file_path)
 
+
 def inspect_data(df):
     print("Initial DataFrame shape:", df.shape)
     print("\nDataFrame info:")
     print(df.info())
     print("\nDataFrame head:\n", df.head())
 
+
 def clean_data(df, min_user_interactions=3, min_product_interactions=3):
+
+    df = df.copy()  # Good practice
 
     # Rename columns
     df.rename(columns={
@@ -45,27 +49,25 @@ def clean_data(df, min_user_interactions=3, min_product_interactions=3):
     df["Description"] = df["Description"].fillna("")
     df["Tags"] = df["Tags"].fillna("")
 
-    # Keep and clean ImageURL
-    # Keep only the first image URL (remove everything after "|")
+    # Keep only first ImageURL
     if "ImageURL" in df.columns:
         df["ImageURL"] = df["ImageURL"].fillna("").astype(str)
         df["ImageURL"] = df["ImageURL"].str.split("|").str[0].str.strip()
 
-
-    # Remove exact duplicate rows
+    # Remove duplicates
     df.drop_duplicates(inplace=True)
 
     # Remove rating = 0
     df = df[df["Rating"] != 0]
 
-    # Text normalization (fixed regex warnings)
+    # Text normalization
     df["Category"] = df["Category"].str.lower().str.replace(r"[^\w\s,]", "", regex=True).str.strip()
     df["Tags"] = df["Tags"].str.lower().str.replace(r"[^\w\s,]", "", regex=True).str.strip()
     df["Brand"] = df["Brand"].str.lower().str.replace(r"[^\w\s]", "", regex=True).str.strip()
     df["Name"] = df["Name"].str.lower().str.replace(r"[^\w\s]", "", regex=True).str.strip()
     df["Description"] = df["Description"].str.lower().str.replace(r"[^\w\s]", "", regex=True).str.strip()
 
-    # Filter users/products with too few interactions
+    # Filter low interaction users/products
     while True:
         user_counts = df["UserID"].value_counts()
         product_counts = df["ProductID"].value_counts()
@@ -78,18 +80,7 @@ def clean_data(df, min_user_interactions=3, min_product_interactions=3):
 
         df = df[~df["UserID"].isin(low_users)]
         df = df[~df["ProductID"].isin(low_products)]
-    # Reset index
+
     df.reset_index(drop=True, inplace=True)
 
     return df
-
-def save_clean_data(df, output_path):
-    df.to_csv(output_path, index=False)
-    
-if __name__ == "__main__":
-    data_path = "clean_data.csv"
-    df_raw = load_data(data_path)
-    df_cleaned = clean_data(df_raw)
-    print("Cleaned DataFrame shape:", df_cleaned.shape)
-    save_clean_data(df_cleaned, "cleaned_data.csv")
-    print("Cleaning Completed Successfully.")
